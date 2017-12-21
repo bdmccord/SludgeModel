@@ -78,8 +78,7 @@ class MomentumWalkingMixin(object):
         grid = self.model.grid
         cart_x = round(math.cos(self.heading))
         cart_y = round(math.sin(self.heading))
-        actual_x = grid.torus_adj(cart_x + self.pos[0], grid.width)
-        actual_y = grid.torus_adj(cart_y + self.pos[1], grid.height)
+        actual_x, actual_y = grid.torus_adj((cart_x + self.pos[0], cart_y + self.pos[1]))
         return (actual_x, actual_y)
 
     def attract(self, agent, attraction_amount=.2):
@@ -362,7 +361,9 @@ class SludgeMonster(KillableAgent, AdjustableEntropyMixin, MomentumWalkingMixin)
 
 
 class SludgeMonsterModel(Model):
-    def __init__(self, num_agents, width=100, height=100, food_growth_prob=0.0005, initial_food_growth=.30):
+
+
+    def __init__(self, num_agents, width=100, height=100, food_growth_prob=0.0005, initial_food_growth=.30, collection_frequency=1):
         self.running = True
         self.width = width
         self.height = height
@@ -387,7 +388,7 @@ class SludgeMonsterModel(Model):
             "is_following": lambda m: m.average_agent_val(agent_type=SludgeMonster, func=lambda a:a.is_following)
             })
 
-
+        self.collection_frequency = collection_frequency
         self.num_agents = num_agents
         for i in range(self.num_agents):
             self.add_agent()
@@ -415,8 +416,9 @@ class SludgeMonsterModel(Model):
             return 0
 
     def step(self):
+        if self.schedule.steps % self.collection_frequency == 0:
+            self.datacollector.collect(self)
         self.schedule.step()
-        self.datacollector.collect(self)
         self.grow_food(self.food_growth_prob)
 
     def grow_food(self, growth_prob):
